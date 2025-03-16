@@ -1,0 +1,105 @@
+Username (leave blank to use 'root'): admin
+Email address: admin@email.com
+Password: expense_password
+
+
+PS C:\Users\Ameya Raj\Downloads\expense-tracker> docker exec -it expense-tracker-db-1 psql -U expense_user -d expense_tracker
+
+
+users:
+ameyarj
+ameya776rj@gmail.com
+ameya123
+
+user1
+user1@example.com
+user1123
+
+user2
+user2@example.com
+user2123
+
+user3
+user3@example.com
+user3123
+
+
+docker-compose.yml:
+
+services:
+  db:
+    image: postgres:17
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_DB=expense_tracker
+      - POSTGRES_USER=expense_user
+      - POSTGRES_PASSWORD=expense_password
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./backend
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    env_file:
+      - ./backend/.env
+    environment:
+      - DATABASE_URL=postgres://expense_user:expense_password@db:5432/expense_tracker
+  frontend:
+    build: ./expense-tracker-frontend
+    volumes:
+      - ./expense-tracker-frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+volumes:
+  postgres_data:
+
+backend/Dockerfile:
+FROM python:3.11
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+FRONTEND Dockerfile
+FROM node:18-alpine
+
+# Set the working directory in the container
+WORKDIR /app
+
+# Copy package.json and package-lock.json to leverage Docker cache
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy the rest of the application code
+COPY . .
+
+# Expose the port on which your app will run
+EXPOSE 3000
+
+# Start the application
+CMD ["npm", "start"]
+
+
